@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Snack Counter</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d212a;
+    --line: #2a2f3a;
+    --text: #e6e9ef;
+    --muted: #8b93a5;
+    --accent: #6ee7b7;
+    --accent-2: #93c5fd;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --ok: #34d399;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: #12151b;
+    position: sticky; top: 0; z-index: 5;
+  }
+  .brand { font-weight: 700; letter-spacing: .3px; font-size: 16px; }
+  .brand span { color: var(--accent); }
+  .clock { font-family: ui-monospace, SFMono-Regular, monospace; color: var(--muted); font-size: 12px; }
+  .spacer { flex: 1; }
+  select, button, input {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: #3b4352; background: #232834; }
+  button:disabled { opacity: .38; cursor: not-allowed; }
+  button:disabled:hover { border-color: var(--line); background: var(--panel-2); }
+  button.primary { background: #173e33; border-color: #1f6d57; color: #c7f9e5; }
+  button.primary:hover { background: #1b4b3d; }
+  button.ghost { padding: 4px 8px; font-size: 12px; }
+  nav { display: flex; gap: 8px; padding: 12px 20px 0; }
+  nav button.active { border-color: var(--accent); color: var(--accent); }
+  main { padding: 16px 20px 60px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, .85fr); gap: 16px; }
+  @media (max-width: 1050px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .panel h2 { margin: 0; padding: 12px 16px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .office { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .office:last-child { border-bottom: 0; }
+  .office-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .office-head h3 { margin: 0; font-size: 15px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+  .bar { height: 9px; border-radius: 99px; background: #262c37; display: flex; overflow: hidden; margin: 10px 0 6px; }
+  .bar i { background: linear-gradient(90deg, #2dd4bf, #6ee7b7); }
+  .bar b { background: #3b4a63; }
+  .bar.over i { background: linear-gradient(90deg, #f87171, #fbbf24); }
+  .boxes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  @media (max-width: 700px) { .boxes { grid-template-columns: 1fr; } }
+  .box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .box.empty { border-color: #6b4a1f; background: #1f1a12; }
+  .box .label { font-weight: 600; }
+  .box .cat { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .box .state { font-size: 12px; margin: 6px 0 8px; color: var(--muted); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; border: 1px solid transparent; }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 99px; background: currentColor; }
+  .s-OPEN { color: #fbbf24; border-color: #6b5320; background: #241e10; }
+  .s-OFFERED { color: #93c5fd; border-color: #27456b; background: #101a26; }
+  .s-BROADCAST { color: #c4b5fd; border-color: #43306b; background: #1a1426; }
+  .s-ASSIGNED { color: #6ee7b7; border-color: #1f6d57; background: #0f241d; }
+  .s-PURCHASED { color: #67e8f9; border-color: #155e6b; background: #0e2024; }
+  .s-REIMBURSED { color: #34d399; border-color: #166534; background: #0d2018; }
+  .s-NEEDS_ATTENTION { color: #f87171; border-color: #6b2020; background: #241010; }
+  .s-CANCELLED { color: #8b93a5; border-color: #333a47; background: #191d24; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chat { display: flex; flex-direction: column; max-height: 78vh; }
+  .chat-body { overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { border-left: 2px solid var(--line); padding: 2px 0 2px 9px; }
+  .msg .meta { font-size: 10.5px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, monospace; }
+  .msg .txt { font-size: 13px; }
+  .msg.alert { border-color: var(--danger); }
+  .msg.offer, .msg.broadcast { border-color: var(--accent-2); }
+  .msg.assigned { border-color: var(--accent); }
+  .msg.reimbursed { border-color: var(--ok); }
+  .msg.empty { border-color: var(--warn); }
+  .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .stat { padding: 14px 16px; }
+  .stat .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .stat .v { font-size: 24px; margin-top: 4px; font-family: ui-monospace, SFMono-Regular, monospace; }
+  .stat .s { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .totals { display: flex; gap: 24px; flex-wrap: wrap; padding: 14px 16px; }
+  .totals div { min-width: 150px; }
+  #toast {
+    position: fixed; right: 18px; bottom: 18px; max-width: 420px; padding: 10px 14px;
+    border-radius: 10px; background: #1d212a; border: 1px solid var(--line); color: var(--text);
+    opacity: 0; transform: translateY(8px); transition: .18s ease; pointer-events: none; z-index: 20;
+  }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.error { border-color: #7f2d2d; background: #2a1515; }
+  .hidden { display: none !important; }
+  .sub { padding: 0 16px 12px; color: var(--muted); font-size: 12px; }
+  .tag { font-size: 11px; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: var(--muted); }
+  .inline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .report-toolbar { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Snack<span>Counter</span></div>
+  <div class="clock" id="clock">—</div>
+  <div class="spacer"></div>
+  <label class="muted" for="acting">Acting as</label>
+  <select id="acting"></select>
+  <span class="muted">Clock</span>
+  <button class="ghost" data-sweep="45">+45m</button>
+  <button class="ghost" data-sweep="60">+1h</button>
+  <button class="ghost" data-sweep="1440">+1d</button>
+  <button class="ghost" data-sweep="7200">+5d</button>
+  <button class="ghost" id="refresh">Refresh</button>
+  <button class="ghost" id="reset">Reset demo</button>
+</header>
+
+<nav>
+  <button data-tab="ops" class="active">Operations</button>
+  <button data-tab="report">Monthly report</button>
+</nav>
+
+<main>
+  <section id="tab-ops">
+    <div class="layout">
+      <div style="display:grid; gap:16px;">
+        <div class="panel">
+          <h2>Counters &amp; budgets</h2>
+          <div id="offices"></div>
+        </div>
+        <div class="panel">
+          <h2>Refill queue</h2>
+          <div id="refills"></div>
+        </div>
+      </div>
+      <aside class="panel chat">
+        <h2>Chat feed (simulated)</h2>
+        <div class="chat-body" id="chat"></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="tab-report" class="hidden">
+    <div class="panel">
+      <div class="report-toolbar">
+        <strong>Monthly report</strong>
+        <input id="period" size="8" placeholder="2026-11" />
+        <button id="load-report" class="primary">Load</button>
+        <span class="muted" id="report-hint"></span>
+      </div>
+      <div id="report"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const state = { boot: null, report: null, acting: null, tab: "ops" };
+
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function money(minor, currency) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency, maximumFractionDigits: 2 }).format(minor / 100);
+}
+function fmtTime(iso, tz) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+    timeZone: tz || "Europe/Oslo", hour12: false,
+  }).format(new Date(iso));
+}
+function tzForChannel(channel) {
+  const slug = String(channel || "").replace("#", "").replace("-snacks", "");
+  const office = (state.boot?.offices || []).find(
+    (o) => o.name.toLowerCase().replaceAll(" ", "-") === slug
+  );
+  return office ? office.timezone : "Europe/Oslo";
+}
+function fmtDate(iso, tz) {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: tz || "Europe/Oslo" }).format(new Date(iso));
+}
+function toast(message, isError = false) {
+  const el = $("#toast");
+  el.textContent = message;
+  el.className = "show" + (isError ? " error" : "");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ""; }, 3800);
+}
+
+async function api(path, method = "GET", body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || data.detail || `HTTP ${res.status}`);
+  return data;
+}
+
+function employeeName(id) {
+  const e = (state.boot?.employees || []).find((x) => x.id === id);
+  return e ? e.name : (id || "—");
+}
+
+function officeOf(id) {
+  return (state.boot?.offices || []).find((x) => x.id === id) || {};
+}
+
+async function refresh() {
+  state.boot = await api("/api/bootstrap");
+  if (!state.acting) {
+    state.acting = localStorage.getItem("snack.acting") || state.boot.employees[0]?.id || null;
+  }
+  renderHeader();
+  renderOffices();
+  renderRefills();
+  renderChat();
+}
+
+function renderHeader() {
+  const boot = state.boot;
+  $("#clock").textContent = boot.offices
+    .map((o) => `${o.name} ${fmtTime(boot.now, o.timezone)}`)
+    .join("  ·  ");
+  $("#clock").title = "Simulated server clock, shown in each office's timezone";
+  const select = $("#acting");
+  if (select.dataset.ready !== "1") {
+    select.innerHTML = boot.employees.map((e) =>
+      `<option value="${esc(e.id)}">${esc(e.name)} — ${esc(e.office_name)}</option>`).join("");
+    select.dataset.ready = "1";
+    select.addEventListener("change", () => {
+      state.acting = select.value;
+      localStorage.setItem("snack.acting", state.acting);
+      renderRefills();
+      renderOffices();
+    });
+  }
+  select.value = state.acting;
+}
+
+function renderOffices() {
+  const boot = state.boot;
+  $("#offices").innerHTML = boot.offices.map((office) => {
+    const b = office.budget;
+    const spentPct = Math.min(100, Math.round((b.spent_minor / b.budget_minor) * 100));
+    const reservedPct = Math.min(100 - spentPct, Math.round((b.reserved_minor / b.budget_minor) * 100));
+    const over = b.available_minor < 0;
+    const boxes = boot.boxes.filter((x) => x.office_id === office.id).map((box) => {
+      const active = box.active_refill_id;
+      const canReport = !active && state.acting;
+      return `
+        <div class="box ${box.status === 'empty' ? 'empty' : ''}">
+          <div class="label">${esc(box.label)}</div>
+          <div class="cat">${esc(box.category)}</div>
+          <div class="state">${active
+            ? `Refill <span class="pill s-${esc(box.active_refill_status)}">${esc(box.active_refill_status)}</span>${box.assignee_name ? ` · ${esc(box.assignee_name)}` : ""}`
+            : `In stock`}</div>
+          <button class="ghost" data-action="report-empty" data-id="${esc(box.id)}" ${canReport ? "" : "disabled"}>
+            Report empty
+          </button>
+        </div>`;
+    }).join("");
+    return `
+      <div class="office">
+        <div class="office-head">
+          <h3>${esc(office.name)} <span class="tag">${esc(office.currency)}</span></h3>
+          <div class="mono">${money(b.spent_minor, office.currency)} <span class="muted">/ ${money(b.budget_minor, office.currency)}</span></div>
+        </div>
+        <div class="bar ${over ? "over" : ""}">
+          <i style="width:${spentPct}%"></i><b style="width:${reservedPct}%"></b>
+        </div>
+        <div class="inline" style="font-size:12px;color:var(--muted)">
+          <span>spent ${money(b.spent_minor, office.currency)}</span>
+          <span>reserved ${money(b.reserved_minor, office.currency)}</span>
+          <span>available <strong style="color:${over ? 'var(--danger)' : 'var(--ok)'}">${money(b.available_minor, office.currency)}</strong></span>
+          <span>· period ${esc(b.period)}</span>
+          ${b.overridden ? `<span class="pill s-OPEN">manager override</span>` : ""}
+          ${b.available_minor < 0 && !b.overridden ? `<button class="ghost" data-action="override" data-id="${esc(office.id)}">Override budget</button>` : ""}
+        </div>
+        <div class="boxes">${boxes}</div>
+      </div>`;
+  }).join("");
+}
+
+function actionButtons(r) {
+  const me = state.acting;
+  const buttons = [];
+  if (r.status === "OFFERED" && r.offered_to_id === me) {
+    buttons.push(`<button class="primary ghost" data-action="accept" data-id="${esc(r.id)}">Accept</button>`);
+    buttons.push(`<button class="ghost" data-action="decline" data-id="${esc(r.id)}">Decline</button>`);
+  } else if (r.status === "BROADCAST") {
+    buttons.push(`<button class="primary ghost" data-action="accept" data-id="${esc(r.id)}">Take it</button>`);
+  } else if (r.status === "ASSIGNED" && r.assignee_id === me) {
+    buttons.push(`<button class="primary ghost" data-action="purchase" data-id="${esc(r.id)}">Log receipt</button>`);
+    buttons.push(`<button class="ghost" data-action="still" data-id="${esc(r.id)}">Still on it</button>`);
+  } else if (r.status === "OPEN" && r.blocked_reason) {
+    buttons.push(`<button class="ghost" data-action="reopen" data-id="${esc(r.id)}">Reopen</button>`);
+  }
+  if (["OPEN", "OFFERED", "BROADCAST", "ASSIGNED"].includes(r.status)) {
+    buttons.push(`<button class="ghost" data-action="cancel" data-id="${esc(r.id)}">Cancel</button>`);
+  }
+  return buttons.join("") || `<span class="muted">—</span>`;
+}
+
+function renderRefills() {
+  const rows = state.boot.refills;
+  if (!rows.length) {
+    $("#refills").innerHTML = `<div class="sub" style="padding:16px">No refills yet. Report a box empty to start the loop.</div>`;
+    return;
+  }
+  $("#refills").innerHTML = `
+    <table>
+      <thead><tr><th>Box</th><th>Status</th><th>Owner</th><th>Due</th><th>Money</th><th></th></tr></thead>
+      <tbody>
+      ${rows.map((r) => `
+        <tr>
+          <td><strong>${esc(r.box_label)}</strong><div class="muted" style="font-size:12px">${esc(r.office_name)} · ${esc(r.priority)}</div></td>
+          <td>
+            <span class="pill s-${esc(r.status)}">${esc(r.status.replaceAll("_", " "))}</span>
+            ${r.blocked_reason ? `<div class="muted" style="font-size:11px;margin-top:4px">${esc(r.blocked_reason)}</div>` : ""}
+            ${r.claim_status ? `<div class="muted" style="font-size:11px;margin-top:4px">claim ${esc(r.claim_status)}</div>` : ""}
+          </td>
+          <td>${r.assignee_name ? esc(r.assignee_name) : (r.offered_to_name ? `offered: ${esc(r.offered_to_name)}` : `<span class="muted">unassigned</span>`)}</td>
+          <td class="mono" style="font-size:12px">${fmtTime(r.due_at, r.office_timezone)}</td>
+          <td class="mono" style="font-size:12px">
+            ${r.purchase_id
+              ? `${money(r.receipt_amount_minor, r.receipt_currency)}`
+              : `<span class="muted">~${money(r.expected_cost_minor, r.currency)}</span>`}
+            <div class="muted" style="font-size:11px">reserved ${money(r.reserved_minor, r.currency)}</div>
+          </td>
+          <td><div class="actions">${actionButtons(r)}</div></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`;
+}
+
+function renderChat() {
+  const el = $("#chat");
+  const messages = state.boot.messages.slice(-60);
+  el.innerHTML = messages.map((m) => `
+    <div class="msg ${esc(m.kind)}">
+      <div class="meta">${fmtTime(m.at, tzForChannel(m.channel))} · ${esc(m.channel)}${m.employee_id ? ` · ${esc(employeeName(m.employee_id))}` : ""}</div>
+      <div class="txt">${esc(m.text)}</div>
+    </div>`).join("");
+  el.scrollTop = el.scrollHeight;
+}
+
+async function act(action, id) {
+  const me = state.acting;
+  try {
+    if (action === "report-empty") {
+      await api(`/api/boxes/${id}/report`, "POST", { actor_id: me });
+      toast("Box reported empty — assignment started.");
+    } else if (action === "accept") {
+      const r = await api(`/api/refills/${id}/accept`, "POST", { employee_id: me });
+      toast(`${employeeName(me)} is on it. Due ${fmtTime(r.due_at, r.office_timezone)}.`);
+    } else if (action === "decline") {
+      await api(`/api/refills/${id}/decline`, "POST", { employee_id: me });
+      toast("Declined — passed to the next person.");
+    } else if (action === "still") {
+      await api(`/api/refills/${id}/still-on-it`, "POST", { employee_id: me });
+      toast("Deadline extended.");
+    } else if (action === "purchase") {
+      const r = state.boot.refills.find((x) => x.id === id);
+      const major = Number(prompt(`Receipt total (${r.currency}):`, (r.expected_cost_minor / 100).toFixed(2)));
+      if (!major || major <= 0) return;
+      await api("/api/purchases", "POST", {
+        buyer_id: me, currency: r.currency, receipt_ref: `receipts/${id}.jpg`,
+        lines: [{ refill_id: id, amount_minor: Math.round(major * 100) }],
+      });
+      toast("Receipt logged and claim queued for HR.");
+    } else if (action === "cancel") {
+      const reason = prompt("Why cancel this refill?", "Already refilled by someone else");
+      if (!reason) return;
+      await api(`/api/refills/${id}/cancel`, "POST", { actor_id: me, reason });
+      toast("Refill cancelled.");
+    } else if (action === "reopen") {
+      await api(`/api/refills/${id}/reopen`, "POST", { employee_id: me });
+      toast("Refill reopened.");
+    } else if (action === "override") {
+      const reason = prompt("Budget override reason:", "Approved by office manager");
+      if (!reason) return;
+      await api("/api/budget/override", "POST", { office_id: id, actor_id: me, reason });
+      toast("Budget override recorded.");
+    }
+    await refresh();
+    if (state.tab === "report") await loadReport();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+async function loadReport() {
+  const period = $("#period").value.trim();
+  const query = period ? `?period=${encodeURIComponent(period)}` : "";
+  state.report = await api(`/api/report${query}`);
+  $("#period").value = state.report.period;
+  $("#report-hint").textContent = `Attributed by purchase date · rates as of ${state.report.rate_as_of}`;
+  renderReport();
+}
+
+function renderReport() {
+  const r = state.report;
+  if (!r) return;
+  const officeCards = r.offices.map((o) => `
+    <div class="panel stat">
+      <div class="k">${esc(o.office_name)} · ${esc(o.currency)}</div>
+      <div class="v">${money(o.spent_minor, o.currency)}</div>
+      <div class="s">${o.purchases} purchase(s), ${o.boxes_refilled} box(es) · budget ${money(o.budget_minor, o.currency)}</div>
+      <div class="s">remaining ${money(o.remaining_minor, o.currency)} (${money(o.reserved_minor, o.currency)} reserved)</div>
+      ${o.by_category.length ? `<div class="s">${o.by_category.map((c) => `${esc(c.category)} ${money(c.amount_minor, o.currency)}`).join(" · ")}</div>` : ""}
+      ${o.outstanding_claims.length ? `<div class="s" style="color:var(--warn)">outstanding: ${o.outstanding_claims.map((c) => money(c.amount_minor, c.currency) + ` (${c.claims})`).join(", ")}</div>` : ""}
+    </div>`).join("");
+
+  const totals = r.totals_by_currency.map((t) => `
+    <div><div class="k muted">${esc(t.currency)} subtotal</div><div class="v mono">${money(t.minor, t.currency)}</div></div>`).join("");
+
+  const rates = r.grand_total.rates.length
+    ? r.grand_total.rates.map((x) => `${x.from}→${x.to} @ ${x.rate} (${esc(x.as_of)}, ${esc(x.source)})`).join(" · ")
+    : "no conversion needed";
+
+  $("#report").innerHTML = `
+    <div class="report-grid">${officeCards}</div>
+    <div class="panel" style="margin:0 16px 16px">
+      <div class="totals">
+        ${totals}
+        <div><div class="k muted">Grand total (${esc(r.grand_total.currency)})</div>
+          <div class="v mono" style="color:var(--accent)">${money(r.grand_total.minor, r.grand_total.currency)}</div>
+          <div class="s muted">${esc(rates)}</div></div>
+        <div><div class="k muted">Outstanding claims</div>
+          <div class="v mono">${r.outstanding_by_currency.length ? r.outstanding_by_currency.map((o) => money(o.minor, o.currency)).join(" + ") : "—"}</div>
+          <div class="s muted">${r.outstanding_by_currency.reduce((n, o) => n + o.claims, 0)} claim(s) awaiting HR</div></div>
+      </div>
+    </div>`;
+}
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-action]");
+  if (target) { act(target.dataset.action, target.dataset.id); return; }
+  const sweep = event.target.closest("[data-sweep]");
+  if (sweep) {
+    api("/api/sweep", "POST", { minutes: Number(sweep.dataset.sweep) })
+      .then((res) => { toast(`Clock advanced. ${res.claim_decisions} claim decision(s), ${res.open_refills} open.`); return refresh(); })
+      .catch((err) => toast(err.message, true));
+    return;
+  }
+  const tab = event.target.closest("[data-tab]");
+  if (tab) {
+    state.tab = tab.dataset.tab;
+    document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b === tab));
+    $("#tab-ops").classList.toggle("hidden", state.tab !== "ops");
+    $("#tab-report").classList.toggle("hidden", state.tab !== "report");
+    if (state.tab === "report") loadReport().catch((err) => toast(err.message, true));
+  }
+});
+
+$("#refresh").addEventListener("click", () => refresh().catch((err) => toast(err.message, true)));
+$("#reset").addEventListener("click", async () => {
+  try { await api("/api/reset", "POST"); state.acting = null; await refresh(); toast("Demo reset."); }
+  catch (err) { toast(err.message, true); }
+});
+$("#load-report").addEventListener("click", () => loadReport().catch((err) => toast(err.message, true)));
+
+refresh().catch((err) => toast(err.message, true));
+setInterval(() => { if (!document.hidden) refresh().catch(() => {}); }, 10000);
+</script>
+</body>
+</html>
